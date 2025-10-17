@@ -1,5 +1,5 @@
 from .parser import Parser
-from .codegen import CodeGenerator
+from .code_generator import CodeGenerator
 import sys
 
 def compile_code(input_file, output_file):

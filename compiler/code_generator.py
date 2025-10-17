@@ -1,4 +1,5 @@
 import random
+from asm_obfuscator import AsmObfuscator
 
 class CodeGenerator:
     def __init__(self):
@@ -6,6 +7,7 @@ class CodeGenerator:
         self.data_segment = []
         self.label_counter = 0
         self.loop_stack = [] # Стек для хранения меток циклов
+        self.obfuscator = AsmObfuscator()
 
     def _generate_label(self):
         self.label_counter += 1
@@ -24,6 +26,9 @@ class CodeGenerator:
         self.assembly_code.append("    mov ebp, mem + 50000") # ebp - указатель на нейроны (переменные)
 
         for token in tokens:
+            # Добавляем обфускацию перед каждой инструкцией
+            self.assembly_code.extend(self.obfuscator.obfuscate([""])) # Добавляем обфускацию перед инструкцией
+
             if token == 'F': # Flicker - Мерцание
                 self.assembly_code.append(f"    mov byte [edi], {random.randint(0, 255)}")
                 self.assembly_code.append("    inc edi")
@@ -246,6 +251,26 @@ class CodeGenerator:
                 self.assembly_code.append(f"    jne {label_start}")
                 self.assembly_code.append("    inc edi")
                 self.assembly_code.append(f"{label_end}:")
+            elif token == 'N': # Neuron: Помещает в "сознание" значение "нейрона" по указанному индексу.
+                self.assembly_code.append("    dec edi") # Индекс нейрона
+                self.assembly_code.append("    mov al, byte [edi]") # Берем индекс
+                self.assembly_code.append("    mov bl, byte [ebp + eax]") # Берем значение нейрона
+                self.assembly_code.append("    inc edi")
+                self.assembly_code.append("    mov byte [edi], bl") # Помещаем в сознание
+                self.assembly_code.append("    inc edi")
+                if random.random() < 0.10: # Побочный эффект: С вероятностью 10% значение этого "нейрона" инвертируется.
+                    self.assembly_code.append("    not byte [ebp + eax]")
+            elif token == 'O': # Observe: Записывает верхнюю "мысль" из "сознания" в "нейрон" по указанному индексу.
+                self.assembly_code.append("    dec edi") # Значение для записи
+                self.assembly_code.append("    mov bl, byte [edi]")
+                self.assembly_code.append("    dec edi") # Индекс нейрона
+                self.assembly_code.append("    mov al, byte [edi]") # Берем индекс
+                self.assembly_code.append("    mov byte [ebp + eax], bl") # Записываем значение в нейрон
+                self.assembly_code.append("    inc edi")
+                self.assembly_code.append("    inc edi")
+                if random.random() < 0.05: # Побочный эффект: С вероятностью 5% случайный "нейрон" обнуляется.
+                    rand_offset = random.randint(0, 9999) # Случайный нейрон (10000 нейронов)
+                    self.assembly_code.append(f"    mov byte [ebp + {rand_offset}], 0")
 
         self.assembly_code.append("    mov eax, 1") # sys_exit
         self.assembly_code.append("    xor ebx, ebx") # exit code 0
