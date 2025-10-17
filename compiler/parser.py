@@ -2,7 +2,7 @@ class Parser:
     def __init__(self, code):
         self.code = code
         self.tokens = []
-        self.valid_tokens = ['F', 'S', 'C', 'D', 'E', 'V', 'M', 'P', 'I', 'L', 'K'] # Новые токены будут обрабатываться в кодогенераторе как "сложные"
+        self.valid_tokens = ['F', 'S', 'C', 'D', 'E', 'V', 'M', 'P', 'I', 'L', 'K', '/', 'N', 'O']
 
     def parse(self):
         for char in self.code:

@@ -15,20 +15,21 @@ class CodeGenerator:
         self.assembly_code.append("section .data")
         self.assembly_code.append("    buffer db 0") # Для операций ввода/вывода
         self.assembly_code.append("section .bss")
-        self.assembly_code.append("    mem resb 60000") # 30000 ячеек для сознания, 30000 для подсознания
+        self.assembly_code.append("    mem resb 60000") # 30000 ячеек для сознания, 20000 для подсознания, 10000 для нейронов
         self.assembly_code.append("section .text")
         self.assembly_code.append("    global _start")
         self.assembly_code.append("_start:")
         self.assembly_code.append("    mov edi, mem") # edi - указатель на текущую ячейку памяти (сознания)
         self.assembly_code.append("    mov esi, mem + 30000") # esi - указатель на подсознание
+        self.assembly_code.append("    mov ebp, mem + 50000") # ebp - указатель на нейроны (переменные)
 
         for token in tokens:
             if token == 'F': # Flicker - Мерцание
                 self.assembly_code.append(f"    mov byte [edi], {random.randint(0, 255)}")
                 self.assembly_code.append("    inc edi")
                 if random.random() < 0.25: # Побочный эффект: 25% меняет местами две случайные "мысли" в "подсознании"
-                    rand_offset1 = random.randint(0, 29999)
-                    rand_offset2 = random.randint(0, 29999)
+                    rand_offset1 = random.randint(0, 19999) # Подсознание теперь 20000 ячеек
+                    rand_offset2 = random.randint(0, 19999)
                     self.assembly_code.append(f"    mov al, byte [esi + {rand_offset1}]")
                     self.assembly_code.append(f"    mov bl, byte [esi + {rand_offset2}]")
                     self.assembly_code.append(f"    mov byte [esi + {rand_offset1}], bl")
@@ -51,7 +52,7 @@ class CodeGenerator:
                 self.assembly_code.append("    inc esi")
                 self.assembly_code.append("    mov byte [esi], al")
                 if random.random() < 0.30: # Побочный эффект: 30% перемещает *случайную* "мысль" из "подсознания" обратно в "сознание"
-                    rand_offset = random.randint(0, 29999)
+                    rand_offset = random.randint(0, 19999) # Подсознание теперь 20000 ячеек
                     self.assembly_code.append(f"    mov al, byte [esi + {rand_offset}]")
                     self.assembly_code.append("    inc edi")
                     self.assembly_code.append("    mov byte [edi], al")
@@ -90,7 +91,7 @@ class CodeGenerator:
                 self.assembly_code.append(f"    jmp {label_end_disorient}")
 
                 self.assembly_code.append(f"{label_odd}:") # Нечетное
-                rand_offset = random.randint(0, 29999)
+                rand_offset = random.randint(0, 19999) # Подсознание теперь 20000 ячеек
                 self.assembly_code.append(f"    mov byte [esi + {rand_offset}], 0") # Обнуляем случайную "мысль" в "подсознании"
                 self.assembly_code.append(f"    jmp {label_end_disorient}")
 
@@ -174,6 +175,34 @@ class CodeGenerator:
                     self.assembly_code.append("    inc edi")
                     self.assembly_code.append("    inc esi")
                     self.assembly_code.append("    mov byte [esi], al")
+            elif token == '/': # Scan - считывает число из stdin и помещает в сознание
+                self.assembly_code.append("    mov eax, 3")    # sys_read
+                self.assembly_code.append("    mov ebx, 0")    # stdin
+                self.assembly_code.append("    mov ecx, buffer") # адрес для чтения в буфер
+                self.assembly_code.append("    mov edx, 10")   # длина буфера (для числа)
+                self.assembly_code.append("    int 0x80")
+                
+                # Преобразование ASCII в число
+                self.assembly_code.append("    xor eax, eax")  # Обнуляем eax
+                self.assembly_code.append("    xor ebx, ebx")  # Обнуляем ebx
+                self.assembly_code.append("    mov ecx, buffer") # Указатель на буфер
+                self.assembly_code.append("read_digit_loop:")
+                self.assembly_code.append("    mov bl, byte [ecx]")
+                self.assembly_code.append("    cmp bl, 0x0A") # Проверяем на символ новой строки
+                self.assembly_code.append("    je end_read_digit")
+                self.assembly_code.append("    cmp bl, '0'")
+                self.assembly_code.append("    jl end_read_digit")
+                self.assembly_code.append("    cmp bl, '9'")
+                self.assembly_code.append("    jg end_read_digit")
+                self.assembly_code.append("    sub bl, '0'") # Преобразуем символ в число
+                self.assembly_code.append("    mov bh, 10")
+                self.assembly_code.append("    mul bh") # eax = eax * 10
+                self.assembly_code.append("    add al, bl") # eax = eax + digit
+                self.assembly_code.append("    inc ecx")
+                self.assembly_code.append("    jmp read_digit_loop")
+                self.assembly_code.append("end_read_digit:")
+                self.assembly_code.append("    mov byte [edi], al") # Помещаем число в сознание
+                self.assembly_code.append("    inc edi")
             elif token == 'L': # Labyrinth - Лабиринт
                 label_start = self._generate_label()
                 label_end = self._generate_label()
@@ -225,7 +254,7 @@ class CodeGenerator:
         return "\n".join(self.assembly_code)
 
 if __name__ == "__main__":
-    test_tokens = ['F', 'S', 'C', 'D', 'E', 'V', 'M', 'P', 'I', 'L', 'K']
+    test_tokens = ['F', 'S', 'C', 'D', 'E', 'V', 'M', 'P', 'I', 'L', 'K', '/', 'N', 'O']
     codegen = CodeGenerator()
     asm_code = codegen.generate(test_tokens)
     print(asm_code)
