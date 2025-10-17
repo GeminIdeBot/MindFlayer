@@ -6,8 +6,6 @@ class CodeGenerator:
         self.data_segment = []
         self.label_counter = 0
         self.loop_stack = [] # Стек для хранения меток циклов
-        self.main_stack_ptr = 0 # Указатель на главный стек (сознание)
-        self.sub_stack_ptr = 30000 # Указатель на вспомогательный стек (подсознание), начинаем с конца памяти
 
     def _generate_label(self):
         self.label_counter += 1
@@ -25,74 +23,199 @@ class CodeGenerator:
         self.assembly_code.append("    mov esi, mem + 30000") # esi - указатель на подсознание
 
         for token in tokens:
-            if token == 'F': # Flash: Генерирует случайное число (0-255) и помещает его в "сознание"
+            if token == 'F': # Flicker - Мерцание
                 self.assembly_code.append(f"    mov byte [edi], {random.randint(0, 255)}")
                 self.assembly_code.append("    inc edi")
-            elif token == 'S': # Shadow: Перемещает верхнюю "мысль" из "сознания" в "подсознание"
-                self.assembly_code.append("    dec edi") # Сдвигаем указатель сознания назад
-                self.assembly_code.append("    mov al, byte [edi]") # Берем значение из сознания
-                self.assembly_code.append("    inc esi") # Сдвигаем указатель подсознания вперед
-                self.assembly_code.append("    mov byte [esi], al") # Помещаем значение в подсознание
-            elif token == 'C': # Clarity: Перемещает верхнюю "мысль" из "подсознания" в "сознание"
-                self.assembly_code.append("    dec esi") # Сдвигаем указатель подсознания назад
-                self.assembly_code.append("    mov al, byte [esi]") # Берем значение из подсознания
-                self.assembly_code.append("    inc edi") # Сдвигаем указатель сознания вперед
-                self.assembly_code.append("    mov byte [edi], al") # Помещаем значение в сознание
-            elif token == 'D': # Distort: (value XOR 0xAA) + 0x55
+                if random.random() < 0.25: # Побочный эффект: 25% меняет местами две случайные "мысли" в "подсознании"
+                    rand_offset1 = random.randint(0, 29999)
+                    rand_offset2 = random.randint(0, 29999)
+                    self.assembly_code.append(f"    mov al, byte [esi + {rand_offset1}]")
+                    self.assembly_code.append(f"    mov bl, byte [esi + {rand_offset2}]")
+                    self.assembly_code.append(f"    mov byte [esi + {rand_offset1}], bl")
+                    self.assembly_code.append(f"    mov byte [esi + {rand_offset2}], al")
+                if random.random() < 0.10: # Побочный эффект: 10% инвертирует биты *всех* "мыслей" в "сознании"
+                    label_invert_start = self._generate_label()
+                    label_invert_end = self._generate_label()
+                    self.assembly_code.append(f"    mov ecx, edi") # Сохраняем текущий указатель сознания
+                    self.assembly_code.append(f"    mov edx, mem") # Начинаем с начала сознания
+                    self.assembly_code.append(f"{label_invert_start}:")
+                    self.assembly_code.append(f"    cmp edx, ecx")
+                    self.assembly_code.append(f"    jge {label_invert_end}")
+                    self.assembly_code.append(f"    not byte [edx]")
+                    self.assembly_code.append(f"    inc edx")
+                    self.assembly_code.append(f"    jmp {label_invert_start}")
+                    self.assembly_code.append(f"{label_invert_end}:")
+            elif token == 'S': # Shift - Сдвиг
                 self.assembly_code.append("    dec edi")
                 self.assembly_code.append("    mov al, byte [edi]")
-                self.assembly_code.append("    xor al, 0xAA")
-                self.assembly_code.append("    add al, 0x55")
-                self.assembly_code.append("    mov byte [edi], al")
-                self.assembly_code.append("    inc edi")
-            elif token == 'E': # Echo: Дублирует верхнюю "мысль" в "сознании"
+                self.assembly_code.append("    inc esi")
+                self.assembly_code.append("    mov byte [esi], al")
+                if random.random() < 0.30: # Побочный эффект: 30% перемещает *случайную* "мысль" из "подсознания" обратно в "сознание"
+                    rand_offset = random.randint(0, 29999)
+                    self.assembly_code.append(f"    mov al, byte [esi + {rand_offset}]")
+                    self.assembly_code.append("    inc edi")
+                    self.assembly_code.append("    mov byte [edi], al")
+            elif token == 'C': # Contort - Искажение
                 self.assembly_code.append("    dec edi")
                 self.assembly_code.append("    mov al, byte [edi]")
-                self.assembly_code.append("    inc edi")
+                self.assembly_code.append("    mov bl, 5")
+                self.assembly_code.append("    mul bl") # al = al * 5
+                self.assembly_code.append("    xor al, 0x77")
+                self.assembly_code.append("    mov bl, byte [edi]")
+                self.assembly_code.append("    and bl, 0x11")
+                self.assembly_code.append("    add al, bl")
                 self.assembly_code.append("    mov byte [edi], al")
                 self.assembly_code.append("    inc edi")
-            elif token == 'V': # Void: Удаляет верхнюю "мысль" из "сознания"
+                if random.random() < 0.15: # Побочный эффект: 15% дублирует верхнюю "мысль" в "подсознании"
+                    self.assembly_code.append("    dec esi")
+                    self.assembly_code.append("    mov al, byte [esi]")
+                    self.assembly_code.append("    inc esi")
+                    self.assembly_code.append("    mov byte [esi], al")
+                    self.assembly_code.append("    inc esi")
+            elif token == 'D': # Disorient - Дезориентация
                 self.assembly_code.append("    dec edi")
-            elif token == 'M': # Merge: (A XOR B) AND (A OR B)
+                self.assembly_code.append("    mov al, byte [edi]")
+                self.assembly_code.append("    test al, 1") # Проверяем четность
+                label_even = self._generate_label()
+                label_odd = self._generate_label()
+                label_end_disorient = self._generate_label()
+                self.assembly_code.append(f"    jz {label_even}") # Если четное
+                self.assembly_code.append(f"    jmp {label_odd}") # Если нечетное
+
+                self.assembly_code.append(f"{label_even}:") # Четное
+                self.assembly_code.append("    mov bl, byte [edi-1]") # Меняем местами текущую и предыдущую
+                self.assembly_code.append("    mov cl, byte [edi]")
+                self.assembly_code.append("    mov byte [edi-1], cl")
+                self.assembly_code.append("    mov byte [edi], bl")
+                self.assembly_code.append(f"    jmp {label_end_disorient}")
+
+                self.assembly_code.append(f"{label_odd}:") # Нечетное
+                rand_offset = random.randint(0, 29999)
+                self.assembly_code.append(f"    mov byte [esi + {rand_offset}], 0") # Обнуляем случайную "мысль" в "подсознании"
+                self.assembly_code.append(f"    jmp {label_end_disorient}")
+
+                self.assembly_code.append(f"{label_end_disorient}:")
+                self.assembly_code.append("    inc edi")
+            elif token == 'E': # Entangle - Запутывание
                 self.assembly_code.append("    dec edi") # B
                 self.assembly_code.append("    mov bl, byte [edi]")
                 self.assembly_code.append("    dec edi") # A
                 self.assembly_code.append("    mov al, byte [edi]")
-                self.assembly_code.append("    xor bh, bl") # bh = A XOR B
+
+                # A = (A OR B) - (A XOR B)
+                self.assembly_code.append("    mov cl, al")
                 self.assembly_code.append("    or cl, bl") # cl = A OR B
-                self.assembly_code.append("    and bh, cl") # (A XOR B) AND (A OR B)
-                self.assembly_code.append("    mov byte [edi], bh")
+                self.assembly_code.append("    mov dh, al")
+                self.assembly_code.append("    xor dh, bl") # dh = A XOR B
+                self.assembly_code.append("    sub cl, dh") # cl = (A OR B) - (A XOR B)
+                self.assembly_code.append("    mov byte [edi], cl") # Сохраняем результат в A
+
+                # B = (A AND B) + (A OR B)
+                self.assembly_code.append("    mov cl, al")
+                self.assembly_code.append("    and cl, bl") # cl = A AND B
+                self.assembly_code.append("    mov dh, al")
+                self.assembly_code.append("    or dh, bl") # dh = A OR B
+                self.assembly_code.append("    add cl, dh") # cl = (A AND B) + (A OR B)
                 self.assembly_code.append("    inc edi")
-            elif token == 'P': # Print: Выводит верхнюю "мысль" из "сознания" как символ
+                self.assembly_code.append("    mov byte [edi], cl") # Сохраняем результат в B
+
+                self.assembly_code.append("    inc edi") # Возвращаем указатель
+
+                if random.random() < 0.50: # Побочный эффект: 50% помещает на стек случайное число
+                    self.assembly_code.append(f"    mov byte [edi], {random.randint(0, 255)}")
+                    self.assembly_code.append("    inc edi")
+            elif token == 'V': # Vanish - Исчезновение
+                self.assembly_code.append("    dec edi")
+                if random.random() < 0.20: # Побочный эффект: 20% удаляет также верхнюю "мысль" из "подсознания"
+                    self.assembly_code.append("    dec esi")
+            elif token == 'M': # Meld - Сплав
+                self.assembly_code.append("    dec edi") # B
+                self.assembly_code.append("    mov bl, byte [edi]")
+                self.assembly_code.append("    dec edi") # A
+                self.assembly_code.append("    mov al, byte [edi]")
+
+                # (A XOR B) + (A AND B) + (B OR A)
+                self.assembly_code.append("    mov cl, al")
+                self.assembly_code.append("    xor cl, bl") # cl = A XOR B
+                self.assembly_code.append("    mov dh, al")
+                self.assembly_code.append("    and dh, bl") # dh = A AND B
+                self.assembly_code.append("    add cl, dh") # cl = (A XOR B) + (A AND B)
+                self.assembly_code.append("    mov dh, bl")
+                self.assembly_code.append("    or dh, al") # dh = B OR A
+                self.assembly_code.append("    add cl, dh") # cl = (A XOR B) + (A AND B) + (B OR A)
+                self.assembly_code.append("    mov byte [edi], cl")
+                self.assembly_code.append("    inc edi")
+
+                if random.random() < 0.30: # Побочный эффект: 30% меняет указатель "сознания" на случайное значение
+                    self.assembly_code.append(f"    mov edi, mem + {random.randint(0, 29999)}")
+            elif token == 'P': # Project - Проекция
+                if random.random() < 0.10: # Побочный эффект: 10% инвертирует биты выведенного символа перед выводом
+                    self.assembly_code.append("    dec edi")
+                    self.assembly_code.append("    not byte [edi]")
+                    self.assembly_code.append("    inc edi")
+
                 self.assembly_code.append("    dec edi")
                 self.assembly_code.append("    mov eax, 4")    # sys_write
                 self.assembly_code.append("    mov ebx, 1")    # stdout
                 self.assembly_code.append("    mov ecx, edi")  # адрес символа
                 self.assembly_code.append("    mov edx, 1")    # длина
                 self.assembly_code.append("    int 0x80")
-                self.assembly_code.append("    inc edi") # Возвращаем указатель на место
-            elif token == 'I': # Input: Считывает символ и помещает его ASCII-значение
+                self.assembly_code.append("    inc edi")
+            elif token == 'I': # Imprint - Отпечаток
                 self.assembly_code.append("    mov eax, 3")    # sys_read
                 self.assembly_code.append("    mov ebx, 0")    # stdin
                 self.assembly_code.append("    mov ecx, edi")  # адрес для записи
                 self.assembly_code.append("    mov edx, 1")    # длина
                 self.assembly_code.append("    int 0x80")
-                self.assembly_code.append("    inc edi") # Увеличиваем указатель стека после ввода
-            elif token == 'L': # Loop: Если верхняя "мысль" в "сознании" равна нулю, переходит к K
+                self.assembly_code.append("    inc edi")
+                if random.random() < 0.20: # Побочный эффект: 20% дублирует введенный символ в "подсознании"
+                    self.assembly_code.append("    dec edi")
+                    self.assembly_code.append("    mov al, byte [edi]")
+                    self.assembly_code.append("    inc edi")
+                    self.assembly_code.append("    inc esi")
+                    self.assembly_code.append("    mov byte [esi], al")
+            elif token == 'L': # Labyrinth - Лабиринт
                 label_start = self._generate_label()
                 label_end = self._generate_label()
                 self.loop_stack.append((label_start, label_end))
+
+                if random.random() < 0.05: # Побочный эффект: 5% меняет порядок всех "мыслей" в "сознании" на обратный
+                    label_reverse_start = self._generate_label()
+                    label_reverse_end = self._generate_label()
+                    self.assembly_code.append(f"    mov ecx, edi") # Сохраняем текущий указатель сознания
+                    self.assembly_code.append(f"    mov edx, mem") # Начало сознания
+                    self.assembly_code.append(f"    mov ebx, edi") # Конец сознания (текущий указатель)
+                    self.assembly_code.append(f"    dec ebx") # Указывает на последний элемент
+
+                    self.assembly_code.append(f"{label_reverse_start}:")
+                    self.assembly_code.append(f"    cmp edx, ebx")
+                    self.assembly_code.append(f"    jge {label_reverse_end}")
+                    self.assembly_code.append(f"    mov al, byte [edx]")
+                    self.assembly_code.append(f"    mov cl, byte [ebx]")
+                    self.assembly_code.append(f"    mov byte [edx], cl")
+                    self.assembly_code.append(f"    mov byte [ebx], al")
+                    self.assembly_code.append(f"    inc edx")
+                    self.assembly_code.append(f"    dec ebx")
+                    self.assembly_code.append(f"    jmp {label_reverse_start}")
+                    self.assembly_code.append(f"{label_reverse_end}:")
+                    self.assembly_code.append(f"    mov edi, ecx") # Восстанавливаем указатель сознания
+
                 self.assembly_code.append(f"{label_start}:")
-                self.assembly_code.append("    dec edi") # Смотрим на верхний элемент стека
+                self.assembly_code.append("    dec edi")
                 self.assembly_code.append("    cmp byte [edi], 0")
                 self.assembly_code.append(f"    je {label_end}")
-                self.assembly_code.append("    inc edi") # Возвращаем указатель
-            elif token == 'K': # Kloop: Если верхняя "мысль" в "сознании" не равна нулю, переходит к L
+                self.assembly_code.append("    inc edi")
+            elif token == 'K': # Key - Ключ
                 label_start, label_end = self.loop_stack.pop()
-                self.assembly_code.append("    dec edi") # Смотрим на верхний элемент стека
+                if random.random() < 0.10: # Побочный эффект: 10% обнуляет верхнюю "мысль" в "подсознании"
+                    self.assembly_code.append("    dec esi")
+                    self.assembly_code.append("    mov byte [esi], 0")
+                    self.assembly_code.append("    inc esi")
+
+                self.assembly_code.append("    dec edi")
                 self.assembly_code.append("    cmp byte [edi], 0")
                 self.assembly_code.append(f"    jne {label_start}")
-                self.assembly_code.append("    inc edi") # Возвращаем указатель
+                self.assembly_code.append("    inc edi")
                 self.assembly_code.append(f"{label_end}:")
 
         self.assembly_code.append("    mov eax, 1") # sys_exit
